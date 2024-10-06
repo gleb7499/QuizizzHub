@@ -3,7 +3,7 @@ import sqlite3 as sq
 import time
 
 from selenium import webdriver
-from selenium.common.exceptions import NoSuchElementException
+from selenium.common.exceptions import NoSuchElementException, StaleElementReferenceException
 from selenium.common.exceptions import TimeoutException
 from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
@@ -18,7 +18,7 @@ def setup_logging():
     logging.basicConfig(
         filename='app.log',
         level=logging.INFO,
-        format='%(asctime)s - %(levelname)s - %(message)s',
+        format='%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s',
         datefmt='%M:%S'
     )
 
@@ -67,24 +67,28 @@ def doAnswers(CODE):
         start_game_but.click()
         logging.info('Кнопка начала игры нажата')
 
-        # Ожидание появления верхнего левого объекта
-        wait_long.until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="absolute h-4 w-auto left-1 right-1 border-t-[0.5px] rounded-md top-1 border-ds-light-500-50 border-gradient-to-b"]'))
-        )
-        logging.info('Верхний левый объект появился\n')
+        # # Ожидание появления верхнего левого объекта
+        # wait_long.until(
+        #     EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="absolute h-4 w-auto left-1 right-1 border-t-[0.5px] rounded-md top-1 border-ds-light-500-50 border-gradient-to-b"]'))
+        # )
+        # logging.info('Верхний левый объект появился\n')
+
+        total_question_number = int(wait_long.until(EC.visibility_of_element_located((By.CSS_SELECTOR, '[role="total-question-number"]'))).text)
+        logging.info(f'Всего вопросов -> {total_question_number}')
 
         flag = True
-        while True:
-            logging.info('Начало цикла')
+        for i in range(1, total_question_number + 1):
+            logging.info(f'Начало цикла -> {i}')
             try:
                 if flag:
+                    logging.info("Начало ожидания цифры текущего вопроса")
+                    WebDriverWait(browser, 15).until(EC.text_to_be_present_in_element((By.CSS_SELECTOR, '[role="current-question-number"]'), str(i)))
                     # Ожидание появление вопроса
                     logging.info('Начало ожидания вопроса')
-                    question_text = WebDriverWait(browser, 5).until(
-                        EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="resizeable gap-x-2 question-text-color text-light font-bold"]'))
-                    )
+                    question_obj = WebDriverWait(browser, 5).until(
+                        EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="resizeable gap-x-2 question-text-color text-light font-bold"]')))
                     logging.info('Вопрос появился')
-                    question_text = question_text.text
+                    question_text = question_obj.text
                     logging.info(f'Текст вопроса получен -> {question_text}')
                     try:
                         question_image = browser.find_element(By.CSS_SELECTOR, '.question-image').get_attribute('src')
@@ -117,7 +121,6 @@ def doAnswers(CODE):
                 EC.visibility_of_element_located((By.CSS_SELECTOR, "div.bpl-container.th-black.option-inner"))
             )
             logging.info('Первая кнопка с ответом обнаружена')
-            time.sleep(0.65)
             browser.execute_script("arguments[0].click();", ans_butt)
             logging.info('Первая кнопка с ответом нажата')
             # Поиск кнопки при выборе нескольких вариантов ответа
@@ -141,11 +144,11 @@ def doAnswers(CODE):
                     try:
                         image_answer = ans.find_element(By.CSS_SELECTOR, '.option-image.object-contain').get_attribute('style')
                         logging.info('Изображение в ответе обнаружено')
-                        question_text = [ans.text, image_answer]
+                        answer = [ans.text, image_answer]
                     except NoSuchElementException:
                         logging.info('Изображений в ответе нет')
-                        question_text = [ans.text]
-                    answers.append(str(question_text))
+                        answer = [ans.text]
+                    answers.append(str(answer))
                 answers = list(dict.fromkeys(answers))
                 answers = str(answers).replace("\\'", "'")
                 question = str(question)
@@ -159,10 +162,10 @@ def doAnswers(CODE):
                     cursor.execute("INSERT INTO Questions VALUES(NULL, ?, ?)", (question, answers))
                     con.commit()
                     logging.info('Вопрос и ответ внесены в БД')
-            # Ожидание ухода объекта, после которого можно продолжать цикл
-            logging.info('Начало ожидания исчезновения объекта div.transition-timer-container')
-            wait_long.until((EC.invisibility_of_element_located((By.CSS_SELECTOR, 'div.transition-timer-container'))))
-            logging.info('Объект div.transition-timer-container исчез')
+            # # Ожидание ухода объекта, после которого можно продолжать цикл
+            # logging.info('Начало ожидания исчезновения объекта div.transition-timer-container')
+            # wait_long.until((EC.invisibility_of_element_located((By.CSS_SELECTOR, 'div.transition-timer-container'))))
+            # logging.info('Объект div.transition-timer-container исчез')
             flag = True
 
     except sq.Error:
