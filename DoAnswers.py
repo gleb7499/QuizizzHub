@@ -9,6 +9,12 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
+browser = webdriver.Chrome()
+browser.get('https://quizizz.com/join')
+con = None
+wait_long = WebDriverWait(browser, 600)
+wait_short = WebDriverWait(browser, 15)
+
 
 def setup_logging():
     # Очищаем файл перед началом логирования
@@ -25,13 +31,8 @@ def setup_logging():
 
 def doAnswers(CODE):
 
+    global con
     setup_logging()
-
-    browser = webdriver.Chrome()
-    browser.get('https://quizizz.com/join')
-    con = None
-    wait_long = WebDriverWait(browser, 600)
-    wait_short = WebDriverWait(browser, 15)
 
     try:
         con = sq.connect('questions.db')
@@ -67,54 +68,30 @@ def doAnswers(CODE):
         start_game_but.click()
         logging.info('Кнопка начала игры нажата')
 
-        # # Ожидание появления верхнего левого объекта
-        # wait_long.until(
-        #     EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="absolute h-4 w-auto left-1 right-1 border-t-[0.5px] rounded-md top-1 border-ds-light-500-50 border-gradient-to-b"]'))
-        # )
-        # logging.info('Верхний левый объект появился\n')
-
         total_question_number = int(wait_long.until(EC.visibility_of_element_located((By.CSS_SELECTOR, '[role="total-question-number"]'))).text)
         logging.info(f'Всего вопросов -> {total_question_number}')
 
         flag = True
-        for i in range(1, total_question_number + 1):
+        i = 1
+        while i <= total_question_number:
             logging.info(f'Начало цикла -> {i}')
-            try:
-                if flag:
-                    logging.info("Начало ожидания цифры текущего вопроса")
-                    WebDriverWait(browser, 15).until(EC.text_to_be_present_in_element((By.CSS_SELECTOR, '[role="current-question-number"]'), str(i)))
-                    # Ожидание появление вопроса
-                    logging.info('Начало ожидания вопроса')
-                    question_obj = WebDriverWait(browser, 5).until(
-                        EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="resizeable gap-x-2 question-text-color text-light font-bold"]')))
-                    logging.info('Вопрос появился')
-                    question_text = question_obj.text
-                    logging.info(f'Текст вопроса получен -> {question_text}')
-                    try:
-                        question_image = browser.find_element(By.CSS_SELECTOR, '.question-image').get_attribute('src')
-                        logging.info('Изображение в вопросе есть')
-                        question = [question_text, question_image]
-                    except NoSuchElementException:
-                        question = question_text
-                        logging.info('Изображения в вопросе отсутствует')
-            except TimeoutException:
-                logging.info('Обнаружена страница с повторным вопросом')
-                # Значит это страница с повторным вопросом
+            while True:
                 try:
-                    logging.info('Начало ожидания кнопки выбора номера повторения вопроса')
-                    repeat_question_button = wait_short.until(
-                        EC.visibility_of_element_located(
-                            (By.CSS_SELECTOR, 'button.selector.strip-default-btn-style.selector-item'))
-                    )
-                    logging.info('Кнопка выбора номера повторения вопроса обнаружена')
-                    browser.execute_script("arguments[0].click();", repeat_question_button)
-                    logging.info('Кнопка выбора номера повторения вопроса нажата')
-                    flag = False
-                    continue
-                except TimeoutException:
-                    logging.info('Тест закончен')
-                    # Значит тест окончен
+                    logging.info("\t\tПоиск текущего вопроса")
+                    WebDriverWait(browser, 0.1).until(EC.text_to_be_present_in_element((By.CSS_SELECTOR, '[role="current-question-number"]'), str(i)))
+                    logging.info("\t\t***Обнаружен новый вопрос***")
+                    question = question_page()
                     break
+                except TimeoutException:
+                    try:
+                        WebDriverWait(browser, 0.1).until(EC.visibility_of_element_located((By.CSS_SELECTOR, "button.selector.strip-default-btn-style.selector-item")))
+                        logging.info("\t\t\tОбнаружен повторный вопрос")
+                        repeat_question()
+                        flag = False
+                        break
+                    except TimeoutException:
+                        pass
+
             # Первая кнопка с ответом
             logging.info('Начало ожидания первой кнопки с ответом')
             ans_butt = wait_short.until(
@@ -125,9 +102,9 @@ def doAnswers(CODE):
             logging.info('Первая кнопка с ответом нажата')
             # Поиск кнопки при выборе нескольких вариантов ответа
             try:
-                next_but = browser.find_element(By.CSS_SELECTOR, '[class="show-tooltip cursor-pointer default"]')
+                ok_button = browser.find_element(By.CSS_SELECTOR, '[class="show-tooltip cursor-pointer default"]')
                 logging.info('Кнопка при выборе нескольких вариантов ответа обнаружена')
-                next_but.find_element(By.CSS_SELECTOR, 'button').click()
+                ok_button.find_element(By.CSS_SELECTOR, 'button').click()
                 logging.info('Кнопка при выборе нескольких вариантов ответа нажата')
             except NoSuchElementException:
                 logging.info('Только один вариант ответа')
@@ -162,11 +139,10 @@ def doAnswers(CODE):
                     cursor.execute("INSERT INTO Questions VALUES(NULL, ?, ?)", (question, answers))
                     con.commit()
                     logging.info('Вопрос и ответ внесены в БД')
-            # # Ожидание ухода объекта, после которого можно продолжать цикл
-            # logging.info('Начало ожидания исчезновения объекта div.transition-timer-container')
-            # wait_long.until((EC.invisibility_of_element_located((By.CSS_SELECTOR, 'div.transition-timer-container'))))
-            # logging.info('Объект div.transition-timer-container исчез')
+                i = i + 1
             flag = True
+
+        logging.info('Тест закончен')
 
     except sq.Error:
         if con:
@@ -175,3 +151,41 @@ def doAnswers(CODE):
         browser.quit()
         if con:
             con.close()
+
+
+def question_page():
+    # Страница обычного вопроса
+    # logging.info("Начало ожидания цифры текущего вопроса")
+    # wait_short.until(EC.text_to_be_present_in_element((By.CSS_SELECTOR, '[role="current-question-number"]'), str(i)))
+
+    # Ожидание появление вопроса
+    logging.info('Начало ожидания вопроса')
+    question_obj = wait_short.until(
+        EC.visibility_of_element_located(
+            (By.CSS_SELECTOR, '[class="resizeable gap-x-2 question-text-color text-light font-bold"]')))
+    logging.info('Вопрос появился')
+    question_text = question_obj.text
+    logging.info(f'Текст вопроса получен -> {question_text}')
+    try:
+        question_image = browser.find_element(By.CSS_SELECTOR, '.question-image').get_attribute('src')
+        logging.info('Изображение в вопросе есть')
+        question = [question_text, question_image]
+    except NoSuchElementException:
+        question = question_text
+        logging.info('Изображения в вопросе отсутствует')
+    return question
+
+
+def repeat_question():
+    # logging.info("Начало ожидания ухода номера текущего вопроса")
+    # WebDriverWait(browser, 15).until(EC.invisibility_of_element_located((By.CSS_SELECTOR, '[role="current-question-number"]')))
+    logging.info('Обнаружена страница с повторным вопросом')
+    # Значит это страница с повторным вопросом
+    logging.info('Начало ожидания кнопки выбора номера повторения вопроса')
+    repeat_question_button = wait_short.until(
+        EC.visibility_of_element_located(
+            (By.CSS_SELECTOR, 'button.selector.strip-default-btn-style.selector-item'))
+    )
+    logging.info('Кнопка выбора номера повторения вопроса обнаружена')
+    browser.execute_script("arguments[0].click();", repeat_question_button)
+    logging.info('Кнопка выбора номера повторения вопроса нажата')
