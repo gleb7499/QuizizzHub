@@ -3,3 +3,4 @@
 __pycache__/
 questions.db
 .env
+app.log
