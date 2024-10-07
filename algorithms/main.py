@@ -2,7 +2,7 @@ import os
 
 from dotenv import load_dotenv
 
-from DoAnswers import doAnswers
+from algorithms.GetAnswers import GetAnswers
 
 if __name__ == '__main__':
     load_dotenv()
@@ -12,4 +12,5 @@ if __name__ == '__main__':
     PASSWORD = os.getenv('PASSWORD')
     SAFE_DATA_IN_ACCOUNT = True
 
-    doAnswers(CODE)
+    quizizz = GetAnswers()
+    quizizz.doAnswers(CODE=CODE)

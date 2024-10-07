@@ -1,6 +1,6 @@
 .idea/
 .venv/
 __pycache__/
-questions.db
+Data/questions.db
 .env
 app.log
