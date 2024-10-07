@@ -1,4 +1,6 @@
+import logging
 import sqlite3 as sq
+import time
 
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
@@ -10,115 +12,162 @@ from selenium.webdriver.support.ui import WebDriverWait
 # сделать запуск теста после ответов вручную на случай ошибки
 
 
-def get_test(CODE, SAFE_DATA_IN_ACCOUNT, EMAIL, PASSWORD):
-    browser = webdriver.Chrome()
-    browser.get('https://quizizz.com/join')
-    con = None
-    wait_long = WebDriverWait(browser, 600)
-    wait_short = WebDriverWait(browser, 15)
+class PassTest:
+    def __init__(self):
+        # Инициализация драйвера
+        self._browser = webdriver.Chrome()
+        self._browser.get('https://quizizz.com/join')
+        self._wait_long = WebDriverWait(self._browser, 600)
+        self._wait_short = WebDriverWait(self._browser, 15)
+        self._wait_quite_short = WebDriverWait(self._browser, 0.1)
+        # Инициализация БД
+        self._connector = sq.connect("../Data/Questions.db")
+        self._cursor = self._connector.cursor()
 
-    try:
-        if SAFE_DATA_IN_ACCOUNT:
-            con = sq.connect('questions.db')
-            cursor = con.cursor()
+    @staticmethod
+    def _setup_logging():
+        # Очищаем файл перед началом логирования
+        with open('../logFiles/PassTest.log', 'w'):
+            pass
 
-            log_in = wait_short.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, '[class="min-w-30 w-full"]'))
-            )
-            browser.execute_script("arguments[0].click();", log_in)
-            log_in = wait_short.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, '[class="login-button"]'))
-            )
-            browser.execute_script("arguments[0].click();", log_in)
-            log_in = wait_short.until(
-                EC.presence_of_all_elements_located((By.CSS_SELECTOR, '[class="text-sm md:text-base rounded w-full flex justify-between items-center py-2 px-4 shadow-sm border border-light-1 hover:shadow-md"]'))
-            )
-            browser.execute_script("arguments[0].click();", log_in[1])
-            log_in = wait_short.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, '[id="email-field-input"]'))
-            )
-            log_in.send_keys(EMAIL)
-            log_in = wait_short.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, '[class="transition-colors duration-200 ease-in-out flex flex items-center justify-center px-4 py-1 text-sm font-semibold h-8 base bg-lilac text-light-3 hover:bg-lilac-light active:bg-lilac-dark rounded primary relative min-w-max w-full w-full"]'))
-            )
-            browser.execute_script("arguments[0].click();", log_in)
-            log_in = wait_short.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, '[id="password-field-input"]'))
-            )
-            log_in.send_keys(PASSWORD)
-            log_in = wait_short.until(
-                EC.presence_of_element_located((By.CSS_SELECTOR, '[class="transition-colors duration-200 ease-in-out flex flex items-center justify-center px-4 py-1 text-sm font-semibold h-8 base bg-lilac text-light-3 hover:bg-lilac-light active:bg-lilac-dark rounded primary relative min-w-max w-full w-full"]'))
-            )
-            browser.execute_script("arguments[0].click();", log_in)
-
-        input_code = wait_long.until(
-            EC.visibility_of_element_located(
-                (By.CSS_SELECTOR, '[class="check-room-input rounded-xl border-0 border-box landing"]'))
-        )
-        input_code.send_keys(CODE)
-        browser.find_element(By.CSS_SELECTOR,
-                             '[class="box-border text-unselectable font-bold border text-center disabled:text-ds-light-500-30 disabled:bg-ds-light-500-10 text-ds-light-500 bg-ds-lilac-500 border-transparent hover:bg-ds-lilac-400 hover:border-ds-lilac-400 active:bg-ds-lilac-600 active:border-ds-lilac-600 px-4 py-2 text-base xs:text-xl w-fit rounded-lg floatingButton mb-1 relative check-room-button"]').click()
-        if SAFE_DATA_IN_ACCOUNT is False:
-            generate_name_but = wait_long.until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="player-name-generator-icon"]'))
-            )
-            generate_name_but.click()
-        start_game_but = wait_long.until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="start-game primary-button"]'))
-        )
-        start_game_but.click()
-
-        wait_long.until(
-            EC.visibility_of_element_located((By.CSS_SELECTOR, 'span.total-questions'))
+        logging.basicConfig(
+            filename='../logFiles/PassTest.log',
+            level=logging.INFO,
+            format='%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s',
+            datefmt='%M:%S'
         )
 
-        while True:
-            try:
-                buff = wait_long.until(
-                    EC.visibility_of_element_located(
-                        (By.CSS_SELECTOR, 'div.resizeable.gap-x-2.question-text-color.text-light'))
+    def pass_test(self, CODE, EMAIL=None, PASSWORD=None):
+        PassTest._setup_logging()
+        try:
+            # Вход в аккаунт, если это нужно
+            if EMAIL is not None and PASSWORD is not None:
+                self._log_in_account(EMAIL, PASSWORD)
+
+            # Ввести код и нажать Join
+            input_and_button = self._wait_long.until(
+                EC.visibility_of_element_located(
+                    (By.CSS_SELECTOR, '[id="proceed-game-action-wrapper"]'))
+            )
+            input_code = input_and_button.find_element(By.CSS_SELECTOR, 'input')
+            input_code.send_keys(CODE)
+            input_and_button.find_element(By.CSS_SELECTOR, 'button').click()
+
+            # Кнопка генерации имени, если не нужен вход в аккаунт
+            if EMAIL is None and PASSWORD is None:
+                generate_name_but = self._wait_long.until(
+                    EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="player-name-generator-icon hover:cursor-pointer"]'))
                 )
-                buff = buff.text
+                generate_name_but.click()
+
+            # Кнопка начала игры
+            start_game_but = self._wait_long.until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="start-game hover:cursor-pointer primary-button"]'))
+            )
+            start_game_but.click()
+
+            # Общее количество вопросов
+            total_question_number = int(self._wait_long.until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, '[role="total-question-number"]'))).text)
+
+            i = 1
+            while i <= total_question_number:
+                logging.info(f'Итерация -> {i}')
                 try:
-                    image_question = browser.find_element(By.CSS_SELECTOR, '.question-image').get_attribute('src')
-                    question = [buff, image_question]
-                except NoSuchElementException:
-                    question = buff
+                    while True:
+                        try:
+                            logging.info('Поиск и сравнение номера вопроса')
+                            self._wait_quite_short.until(EC.text_to_be_present_in_element((By.CSS_SELECTOR, '[role="current-question-number"]'), str(i)))
+                            logging.info('***Номер вопроса найден***')
+                            break
+                        except TimeoutException:
+                            logging.info('Продолжается поиск номера вопроса...')
+                            pass
 
-                cursor.execute("SELECT Answer FROM Questions WHERE Question = ?", (str(question),))
-                answers_db = cursor.fetchone()[0]
-                choices = wait_short.until(
-                    EC.visibility_of_all_elements_located((By.CSS_SELECTOR, "div.bpl-container.th-black.option-inner"))
-                )
-                for choice in choices:
+                    logging.info('Ожидание объекта с вопросом')
+                    question_obj = self._wait_short.until(
+                        EC.visibility_of_element_located(
+                            (By.CSS_SELECTOR, '[class="resizeable gap-x-2 question-text-color text-light font-bold"]'))
+                    )
+                    logging.info('Объект с вопросами получен')
+                    question_text = question_obj.text
+                    logging.info(f'Вопрос -> {question_text}')
                     try:
-                        image_answer = choice.find_element(By.CSS_SELECTOR,
-                                                           '.option-image.object-contain').get_attribute(
-                            'style')
-                        buff = [choice.text, image_answer]
+                        logging.info('Начало поиска изображения в вопросе')
+                        question_image = self._browser.find_element(By.CSS_SELECTOR, '.question-image').get_attribute('src')
+                        logging.info('Фото в вопросе обнаружено')
+                        question = [question_text, question_image]
                     except NoSuchElementException:
-                        buff = [choice.text]
-                    buff = str(buff)
-                    if buff in answers_db:
-                        browser.execute_script("arguments[0].click();", choice)
-            except TimeoutException:
-                break
-            try:
-                browser.find_element(By.CSS_SELECTOR,
-                                     '[class="msq-text flex justify-center items-center w-full font-semibold text-lg text-light-66% mb-2"]')
-                next_but = wait_short.until(
-                    EC.element_to_be_clickable((By.CSS_SELECTOR, '[class="submit-button exp-subtext"]'))
-                )
-                next_but.click()
-            except NoSuchElementException:
-                pass
-            wait_short.until((EC.visibility_of_element_located((By.CSS_SELECTOR, 'div.transition-timer-container'))))
-            wait_long.until((EC.invisibility_of_element_located((By.CSS_SELECTOR, 'div.transition-timer-container'))))
+                        logging.info('Фото в вопросе нет')
+                        question = question_text
 
-    except sq.Error:
-        if con:
-            con.rollback()
-    finally:
-        browser.quit()
-        if con:
-            con.close()
+                    logging.info('Запрос к базе данных')
+                    self._cursor.execute("SELECT Answer FROM Questions WHERE Question = ?", (str(question),))
+                    answer_db = self._cursor.fetchone()[0]
+                    logging.info('Ответ от бд получен')
+                    logging.info('Начало ожидания массива ответов, доступных на странице')
+                    choices = self._wait_short.until(
+                        EC.visibility_of_all_elements_located((By.CSS_SELECTOR, '[class="resizeable gap-x-2"]'))
+                    )
+                    logging.info('Объекты вариантов ответов получены')
+                    for choice in choices:
+                        try:
+                            image_answer = choice.find_element(By.CSS_SELECTOR, '.option-image.object-contain').get_attribute('style')
+                            answer = [choice.text, image_answer]
+                        except NoSuchElementException:
+                            answer = [choice.text]
+                        answer = str(answer)
+                        if answer in answer_db:
+                            logging.info(f'Выбран ответ {answer}')
+                            self._browser.execute_script("arguments[0].click();", choice)
+                except TimeoutException:
+                    break
+                try:
+                    ok_button = self._browser.find_element(By.CSS_SELECTOR, '[class="show-tooltip cursor-pointer default"]')
+                    ok_button.find_element(By.CSS_SELECTOR, 'button').click()
+                except NoSuchElementException:
+                    pass
+                i = i + 1
+
+            time.sleep(600)
+
+        except sq.Error:
+            if self._connector:
+                self._connector.rollback()
+        finally:
+            self._browser.quit()
+            if self._connector:
+                self._connector.close()
+
+    def _log_in_account(self, EMAIL, PASSWORD):
+        log_in = self._wait_short.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '[class="min-w-30 w-full"]'))
+        )
+        self._browser.execute_script("arguments[0].click();", log_in)
+        log_in = self._wait_short.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '[class="login-button"]'))
+        )
+        self._browser.execute_script("arguments[0].click();", log_in)
+        log_in = self._wait_short.until(
+            EC.presence_of_all_elements_located((By.CSS_SELECTOR,
+                                                 '[class="text-sm md:text-base rounded w-full flex justify-between items-center py-2 px-4 shadow-sm border border-light-1 hover:shadow-md"]'))
+        )
+        self._browser.execute_script("arguments[0].click();", log_in[1])
+        log_in = self._wait_short.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '[id="email-field-input"]'))
+        )
+        log_in.send_keys(EMAIL)
+        log_in = self._wait_short.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR,
+                                            '[class="transition-colors duration-200 ease-in-out flex flex items-center justify-center px-4 py-1 text-sm font-semibold h-8 base bg-lilac text-light-3 hover:bg-lilac-light active:bg-lilac-dark rounded primary relative min-w-max w-full w-full"]'))
+        )
+        self._browser.execute_script("arguments[0].click();", log_in)
+        log_in = self._wait_short.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR, '[id="password-field-input"]'))
+        )
+        log_in.send_keys(PASSWORD)
+        log_in = self._wait_short.until(
+            EC.presence_of_element_located((By.CSS_SELECTOR,
+                                            '[class="transition-colors duration-200 ease-in-out flex flex items-center justify-center px-4 py-1 text-sm font-semibold h-8 base bg-lilac text-light-3 hover:bg-lilac-light active:bg-lilac-dark rounded primary relative min-w-max w-full w-full"]'))
+        )
+        self._browser.execute_script("arguments[0].click();", log_in)

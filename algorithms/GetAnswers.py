@@ -15,10 +15,10 @@ class GetAnswers:
         self._browser = webdriver.Chrome()
         self._browser.get('https://quizizz.com/join')
         self._wait_long = WebDriverWait(self._browser, 600)
-        self._wait_short = WebDriverWait(self._browser, 15)
+        self._wait_short = WebDriverWait(self._browser, 30)
         self._wait_quite_short = WebDriverWait(self._browser, 0.1)
         # Инициализация БД
-        self._connector = sq.connect("Data/Questions.db")
+        self._connector = sq.connect("../Data/Questions.db")
         self._cursor = self._connector.cursor()
         self._cursor.execute("DROP TABLE IF EXISTS Questions")
         self._cursor.execute("""CREATE TABLE IF NOT EXISTS Questions (
@@ -30,17 +30,17 @@ class GetAnswers:
     @staticmethod
     def _setup_logging():
         # Очищаем файл перед началом логирования
-        with open('../app.log', 'w'):
+        with open('../logFiles/GetAnswers.log', 'w'):
             pass
 
         logging.basicConfig(
-            filename='../app.log',
+            filename='../logFiles/GetAnswers.log',
             level=logging.INFO,
             format='%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s',
             datefmt='%M:%S'
         )
 
-    def doAnswers(self, CODE):
+    def get_answers(self, CODE):
         GetAnswers._setup_logging()
         try:
             # Ввести код и нажать Join
@@ -90,6 +90,7 @@ class GetAnswers:
                             flag = False
                             break
                         except TimeoutException:
+                            # Не нашелся ни один из элементов -> обоих элементов не было на странице, попробуем что-нибудь найти еще раз
                             pass
                 # Первая кнопка с ответом
                 logging.info('Начало ожидания первой кнопки с ответом')
