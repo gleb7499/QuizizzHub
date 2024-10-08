@@ -9,8 +9,6 @@ from selenium.webdriver.common.by import By
 from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
-# сделать запуск теста после ответов вручную на случай ошибки
-
 
 class PassTest:
     def __init__(self):
@@ -26,16 +24,14 @@ class PassTest:
 
     @staticmethod
     def _setup_logging():
-        # Очищаем файл перед началом логирования
-        with open('../logFiles/PassTest.log', 'w'):
-            pass
-
         logging.basicConfig(
-            filename='../logFiles/PassTest.log',
+            filename='../logFile/app.log',
+            encoding='utf-8',
             level=logging.INFO,
             format='%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s',
             datefmt='%M:%S'
         )
+        logging.info('\n\t\t\t***Начала логирования PassTest***\n')
 
     def pass_test(self, CODE, EMAIL=None, PASSWORD=None):
         PassTest._setup_logging()
@@ -56,13 +52,15 @@ class PassTest:
             # Кнопка генерации имени, если не нужен вход в аккаунт
             if EMAIL is None and PASSWORD is None:
                 generate_name_but = self._wait_long.until(
-                    EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="player-name-generator-icon hover:cursor-pointer"]'))
+                    EC.visibility_of_element_located(
+                        (By.CSS_SELECTOR, '[class="player-name-generator-icon hover:cursor-pointer"]'))
                 )
                 generate_name_but.click()
 
             # Кнопка начала игры
             start_game_but = self._wait_long.until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="start-game hover:cursor-pointer primary-button"]'))
+                EC.visibility_of_element_located(
+                    (By.CSS_SELECTOR, '[class="start-game hover:cursor-pointer primary-button"]'))
             )
             start_game_but.click()
 
@@ -77,7 +75,9 @@ class PassTest:
                     while True:
                         try:
                             logging.info('Поиск и сравнение номера вопроса')
-                            self._wait_quite_short.until(EC.text_to_be_present_in_element((By.CSS_SELECTOR, '[role="current-question-number"]'), str(i)))
+                            self._wait_quite_short.until(
+                                EC.text_to_be_present_in_element((By.CSS_SELECTOR, '[role="current-question-number"]'),
+                                                                 str(i)))
                             logging.info('***Номер вопроса найден***')
                             break
                         except TimeoutException:
@@ -94,7 +94,8 @@ class PassTest:
                     logging.info(f'Вопрос -> {question_text}')
                     try:
                         logging.info('Начало поиска изображения в вопросе')
-                        question_image = self._browser.find_element(By.CSS_SELECTOR, '.question-image').get_attribute('src')
+                        question_image = self._browser.find_element(By.CSS_SELECTOR, '.question-image').get_attribute(
+                            'src')
                         logging.info('Фото в вопросе обнаружено')
                         question = [question_text, question_image]
                     except NoSuchElementException:
@@ -104,26 +105,35 @@ class PassTest:
                     logging.info('Запрос к базе данных')
                     self._cursor.execute("SELECT Answer FROM Questions WHERE Question = ?", (str(question),))
                     answer_db = self._cursor.fetchone()[0]
-                    logging.info('Ответ от бд получен')
+                    logging.info(f'Ответ от бд получен -> {answer_db}')
                     logging.info('Начало ожидания массива ответов, доступных на странице')
                     choices = self._wait_short.until(
-                        EC.visibility_of_all_elements_located((By.CSS_SELECTOR, '[class="resizeable gap-x-2"]'))
+                        EC.visibility_of_all_elements_located(
+                            (By.CSS_SELECTOR, '[class="bpl-content-container w-full"]'))
                     )
                     logging.info('Объекты вариантов ответов получены')
                     for choice in choices:
+                        # Поиск ответа
                         try:
-                            image_answer = choice.find_element(By.CSS_SELECTOR, '.option-image.object-contain').get_attribute('style')
-                            answer = [choice.text, image_answer]
+                            text_choice = choice.find_element(By.CSS_SELECTOR, '.resizeable.gap-x-2').text
                         except NoSuchElementException:
-                            answer = [choice.text]
+                            text_choice = ''
+                        try:
+                            image_answer = choice.find_element(By.CSS_SELECTOR,
+                                                               '.option-image.object-contain').get_attribute('style')
+                            answer = [text_choice, image_answer]
+                        except NoSuchElementException:
+                            answer = [text_choice]
                         answer = str(answer)
+                        logging.info(f'Текущий кандидат на ответ со страницы -> {answer}')
                         if answer in answer_db:
                             logging.info(f'Выбран ответ {answer}')
                             self._browser.execute_script("arguments[0].click();", choice)
                 except TimeoutException:
                     break
                 try:
-                    ok_button = self._browser.find_element(By.CSS_SELECTOR, '[class="show-tooltip cursor-pointer default"]')
+                    ok_button = self._browser.find_element(By.CSS_SELECTOR,
+                                                           '[class="show-tooltip cursor-pointer default"]')
                     ok_button.find_element(By.CSS_SELECTOR, 'button').click()
                 except NoSuchElementException:
                     pass

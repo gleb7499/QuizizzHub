@@ -29,16 +29,14 @@ class GetAnswers:
 
     @staticmethod
     def _setup_logging():
-        # Очищаем файл перед началом логирования
-        with open('../logFiles/GetAnswers.log', 'w'):
-            pass
-
         logging.basicConfig(
-            filename='../logFiles/GetAnswers.log',
+            filename='../logFile/app.log',
+            encoding='utf-8',
             level=logging.INFO,
             format='%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s',
             datefmt='%M:%S'
         )
+        logging.info('\t\t\t***Начала логирования GetAnswers***\n')
 
     def get_answers(self, CODE):
         GetAnswers._setup_logging()
@@ -55,20 +53,23 @@ class GetAnswers:
 
             # Кнопка генерации имени
             generate_name_but = self._wait_long.until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="player-name-generator-icon hover:cursor-pointer"]'))
+                EC.visibility_of_element_located(
+                    (By.CSS_SELECTOR, '[class="player-name-generator-icon hover:cursor-pointer"]'))
             )
             generate_name_but.click()
             logging.info('Кнопка генерации имени нажата')
 
             # Кнопка начала игры
             start_game_but = self._wait_long.until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, '[class="start-game hover:cursor-pointer primary-button"]'))
+                EC.visibility_of_element_located(
+                    (By.CSS_SELECTOR, '[class="start-game hover:cursor-pointer primary-button"]'))
             )
             start_game_but.click()
             logging.info('Кнопка начала игры нажата')
 
             # Общее количество вопросов
-            total_question_number = int(self._wait_long.until(EC.visibility_of_element_located((By.CSS_SELECTOR, '[role="total-question-number"]'))).text)
+            total_question_number = int(self._wait_long.until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, '[role="total-question-number"]'))).text)
             logging.info(f'Всего вопросов -> {total_question_number}')
 
             flag = True
@@ -78,13 +79,16 @@ class GetAnswers:
                 while True:
                     try:
                         logging.info("\t\tПоиск текущего вопроса")
-                        self._wait_quite_short.until(EC.text_to_be_present_in_element((By.CSS_SELECTOR, '[role="current-question-number"]'), str(i)))
+                        self._wait_quite_short.until(
+                            EC.text_to_be_present_in_element((By.CSS_SELECTOR, '[role="current-question-number"]'),
+                                                             str(i)))
                         logging.info("\t\t***Обнаружен новый вопрос***")
                         question = self._new_question()
                         break
                     except TimeoutException:
                         try:
-                            self._wait_quite_short.until(EC.visibility_of_element_located((By.CSS_SELECTOR, "button.selector.strip-default-btn-style.selector-item")))
+                            self._wait_quite_short.until(EC.visibility_of_element_located(
+                                (By.CSS_SELECTOR, "button.selector.strip-default-btn-style.selector-item")))
                             logging.info("\t\t\tОбнаружен повторный вопрос")
                             self._repeat_question()
                             flag = False
@@ -102,7 +106,8 @@ class GetAnswers:
                 logging.info('Первая кнопка с ответом нажата')
                 # Поиск кнопки при выборе нескольких вариантов ответа
                 try:
-                    ok_button = self._browser.find_element(By.CSS_SELECTOR, '[class="show-tooltip cursor-pointer default"]')
+                    ok_button = self._browser.find_element(By.CSS_SELECTOR,
+                                                           '[class="show-tooltip cursor-pointer default"]')
                     logging.info('Кнопка при выборе нескольких вариантов ответа обнаружена')
                     ok_button.find_element(By.CSS_SELECTOR, 'button').click()
                     logging.info('Кнопка при выборе нескольких вариантов ответа нажата')
@@ -117,21 +122,28 @@ class GetAnswers:
                     logging.info('Объекты с ответами обнаружены')
                     answers = []
                     for ans in answers_obj:
+                        # Поиск ответа
+                        try:
+                            text_choice = ans.find_element(By.CSS_SELECTOR, '.resizeable.gap-x-2').text
+                        except NoSuchElementException:
+                            text_choice = ''
                         # Изображения в ответах
                         try:
-                            image_answer = ans.find_element(By.CSS_SELECTOR, '.option-image.object-contain').get_attribute('style')
+                            image_answer = ans.find_element(By.CSS_SELECTOR,
+                                                            '.option-image.object-contain').get_attribute('style')
                             logging.info('Изображение в ответе обнаружено')
-                            answer = [ans.text, image_answer]
+                            answer = [text_choice, image_answer]
                         except NoSuchElementException:
                             logging.info('Изображений в ответе нет')
-                            answer = [ans.text]
+                            answer = [text_choice]
                         answers.append(str(answer))
                     answers = list(dict.fromkeys(answers))
                     answers = str(answers).replace("\\'", "'")
                     question = str(question)
                     logging.info(f'Вопрос -> {question}, Ответ -> {answers}')
                     # Поиск повторений в базе данных
-                    self._cursor.execute("SELECT Question, Answer FROM Questions WHERE Question = ? AND Answer = ?", (question, answers))
+                    self._cursor.execute("SELECT Question, Answer FROM Questions WHERE Question = ? AND Answer = ?",
+                                         (question, answers))
                     try:
                         self._cursor.fetchone()[0]
                         logging.info('Обнаружена повторка')

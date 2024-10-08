@@ -11,10 +11,9 @@ if __name__ == '__main__':
     CODE = os.getenv('CODE')
     EMAIL = os.getenv('EMAIL')
     PASSWORD = os.getenv('PASSWORD')
-    SAFE_DATA_IN_ACCOUNT = True
 
     answers = GetAnswers()
     answers.get_answers(CODE=CODE)
 
     test = PassTest()
-    test.pass_test(CODE)
+    test.pass_test(CODE=CODE, EMAIL=EMAIL, PASSWORD=PASSWORD)
