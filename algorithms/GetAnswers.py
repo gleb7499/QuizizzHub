@@ -29,6 +29,9 @@ class GetAnswers:
 
     @staticmethod
     def _setup_logging():
+        with open('../logFile/app.log', 'w'):
+            pass
+
         logging.basicConfig(
             filename='../logFile/app.log',
             encoding='utf-8',

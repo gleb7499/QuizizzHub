@@ -139,7 +139,15 @@ class PassTest:
                     pass
                 i = i + 1
 
-            time.sleep(600)
+            # Периодически проверять открыт ли браузер во время спячки кода
+            check_interval = 3
+            while True:
+                time.sleep(check_interval)
+                try:
+                    self._browser.title
+                except:
+                    logging.info('Браузер закрыт пользователем')
+                    break
 
         except sq.Error:
             if self._connector:
