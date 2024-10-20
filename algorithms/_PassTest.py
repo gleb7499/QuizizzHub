@@ -1,4 +1,5 @@
 import logging
+import random
 import sqlite3 as sq
 import time
 
@@ -10,20 +11,24 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 
-class PassTest:
+class _PassTest:
     def __init__(self):
         # Инициализация драйвера
-        self._browser = webdriver.Chrome()
-        self._browser.get('https://quizizz.com/join')
-        self._wait_long = WebDriverWait(self._browser, 600)
-        self._wait_short = WebDriverWait(self._browser, 15)
-        self._wait_quite_short = WebDriverWait(self._browser, 0.1)
+        self._browser = None
+        self._wait_long = None
+        self._wait_short = None
+        self._wait_quite_short = None
         # Инициализация БД
         self._connector = sq.connect("../Data/Questions.db")
         self._cursor = self._connector.cursor()
 
+    def __del__(self):
+        self._browser.quit()
+        if self._connector:
+            self._connector.close()
+
     @staticmethod
-    def _setup_logging():
+    def _setup_logging() -> None:
         logging.basicConfig(
             filename='../logFile/app.log',
             encoding='utf-8',
@@ -33,8 +38,21 @@ class PassTest:
         )
         logging.info('\n\t\t\t***Начала логирования PassTest***\n')
 
-    def pass_test(self, CODE, EMAIL=None, PASSWORD=None):
-        PassTest._setup_logging()
+    def pass_test(self, ratio: int, CODE: int, EMAIL: str = None, PASSWORD: str = None) -> None:
+        # Инициализация драйвера
+        self._browser = webdriver.Chrome()
+        self._browser.get('https://quizizz.com/join')
+        self._wait_long = WebDriverWait(self._browser, 600)
+        self._wait_short = WebDriverWait(self._browser, 15)
+        self._wait_quite_short = WebDriverWait(self._browser, 0.1)
+
+        _PassTest._setup_logging()
+
+        if ratio not in (0, 1, 2, 3):
+            raise ValueError("Invalid speed parameter")
+        MIN = float(0.5 * ratio)
+        MAX = float(1.5 * ratio)
+
         try:
             # Вход в аккаунт, если это нужно
             if EMAIL is not None and PASSWORD is not None:
@@ -112,6 +130,7 @@ class PassTest:
                             (By.CSS_SELECTOR, '[class="bpl-content-container w-full"]'))
                     )
                     logging.info('Объекты вариантов ответов получены')
+                    correct_answer = list()
                     for choice in choices:
                         # Поиск ответа
                         try:
@@ -128,15 +147,23 @@ class PassTest:
                         logging.info(f'Текущий кандидат на ответ со страницы -> {answer}')
                         if answer in answer_db:
                             logging.info(f'Выбран ответ {answer}')
+                            correct_answer.append(choice)
+
+                    # Корректировка в соответствии с желаемым ожиданием перед выбором правильного ответа
+                    try:
+                        ok_button = self._browser.find_element(By.CSS_SELECTOR,
+                                                               '[class="show-tooltip cursor-pointer default"]')
+                        ok_button = ok_button.find_element(By.CSS_SELECTOR, 'button')
+                        for choice in correct_answer:
                             self._browser.execute_script("arguments[0].click();", choice)
+                        time.sleep(random.uniform(MIN, MAX))
+                        ok_button.click()
+                    except NoSuchElementException:
+                        time.sleep(random.uniform(MIN, MAX))
+                        self._browser.execute_script("arguments[0].click();", correct_answer[0])
+
                 except TimeoutException:
                     break
-                try:
-                    ok_button = self._browser.find_element(By.CSS_SELECTOR,
-                                                           '[class="show-tooltip cursor-pointer default"]')
-                    ok_button.find_element(By.CSS_SELECTOR, 'button').click()
-                except NoSuchElementException:
-                    pass
                 i = i + 1
 
             # Периодически проверять открыт ли браузер во время спячки кода
@@ -152,12 +179,8 @@ class PassTest:
         except sq.Error:
             if self._connector:
                 self._connector.rollback()
-        finally:
-            self._browser.quit()
-            if self._connector:
-                self._connector.close()
 
-    def _log_in_account(self, EMAIL, PASSWORD):
+    def _log_in_account(self, EMAIL: str, PASSWORD: str) -> None:
         log_in = self._wait_short.until(
             EC.presence_of_element_located((By.CSS_SELECTOR, '[class="min-w-30 w-full"]'))
         )

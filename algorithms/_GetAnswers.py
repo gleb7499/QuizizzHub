@@ -9,14 +9,13 @@ from selenium.webdriver.support import expected_conditions as EC
 from selenium.webdriver.support.ui import WebDriverWait
 
 
-class GetAnswers:
+class _GetAnswers:
     def __init__(self):
         # Инициализация драйвера
-        self._browser = webdriver.Chrome()
-        self._browser.get('https://quizizz.com/join')
-        self._wait_long = WebDriverWait(self._browser, 600)
-        self._wait_short = WebDriverWait(self._browser, 30)
-        self._wait_quite_short = WebDriverWait(self._browser, 0.1)
+        self._browser = None
+        self._wait_long = None
+        self._wait_short = None
+        self._wait_quite_short = None
         # Инициализация БД
         self._connector = sq.connect("../Data/Questions.db")
         self._cursor = self._connector.cursor()
@@ -27,8 +26,13 @@ class GetAnswers:
                         Answer TEXT
                         )""")
 
+    def __del__(self):
+        self._browser.quit()
+        if self._connector:
+            self._connector.close()
+
     @staticmethod
-    def _setup_logging():
+    def _setup_logging() -> None:
         with open('../logFile/app.log', 'w'):
             pass
 
@@ -41,8 +45,16 @@ class GetAnswers:
         )
         logging.info('\t\t\t***Начала логирования GetAnswers***\n')
 
-    def get_answers(self, CODE):
-        GetAnswers._setup_logging()
+    def get_answers(self, CODE: int) -> None:
+        # Инициализация драйвера
+        self._browser = webdriver.Chrome()
+        self._browser.get('https://quizizz.com/join')
+        self._wait_long = WebDriverWait(self._browser, 600)
+        self._wait_short = WebDriverWait(self._browser, 30)
+        self._wait_quite_short = WebDriverWait(self._browser, 0.1)
+
+        _GetAnswers._setup_logging()
+
         try:
             # Ввести код и нажать Join
             input_and_button = self._wait_long.until(
@@ -158,16 +170,13 @@ class GetAnswers:
                 flag = True
 
             logging.info('Тест закончен')
+            self._browser.quit()
 
         except sq.Error:
             if self._connector:
                 self._connector.rollback()
-        finally:
-            self._browser.quit()
-            if self._connector:
-                self._connector.close()
 
-    def _new_question(self):
+    def _new_question(self) -> None:
         # Ожидание появление вопроса
         logging.info('Начало ожидания вопроса')
         question_obj = self._wait_short.until(
@@ -185,7 +194,7 @@ class GetAnswers:
             logging.info('Изображения в вопросе отсутствует')
         return question
 
-    def _repeat_question(self):
+    def _repeat_question(self) -> None:
         logging.info('Обнаружена страница с повторным вопросом')
         # Значит это страница с повторным вопросом
         logging.info('Начало ожидания кнопки выбора номера повторения вопроса')
