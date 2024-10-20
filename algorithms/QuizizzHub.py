@@ -16,4 +16,7 @@ class QuizizzHub:
         self._get_answers.get_answers(CODE=CODE)
 
     def pass_test(self, ratio: int, CODE: int, EMAIL: str = None, PASSWORD: str = None) -> None:
-        self._pass_test.pass_test(ratio=ratio, CODE=CODE, EMAIL=EMAIL, PASSWORD=PASSWORD)
+        try:
+            self._pass_test.pass_test(ratio=ratio, CODE=CODE, EMAIL=EMAIL, PASSWORD=PASSWORD)
+        except ValueError as e:
+            raise e

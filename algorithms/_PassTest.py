@@ -23,7 +23,8 @@ class _PassTest:
         self._cursor = self._connector.cursor()
 
     def __del__(self):
-        self._browser.quit()
+        if self._browser:
+            self._browser.quit()
         if self._connector:
             self._connector.close()
 
@@ -50,8 +51,8 @@ class _PassTest:
 
         if ratio not in (0, 1, 2, 3):
             raise ValueError("Invalid speed parameter")
-        MIN = float(0.5 * ratio)
-        MAX = float(1.5 * ratio)
+        MIN = float(2 * ratio)
+        MAX = float(2.5 * ratio)
 
         try:
             # Вход в аккаунт, если это нужно

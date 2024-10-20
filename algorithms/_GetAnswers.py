@@ -27,7 +27,8 @@ class _GetAnswers:
                         )""")
 
     def __del__(self):
-        self._browser.quit()
+        if self._browser:
+            self._browser.quit()
         if self._connector:
             self._connector.close()
 
