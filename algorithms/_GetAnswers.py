@@ -1,4 +1,5 @@
 import logging
+import os
 import sqlite3 as sq
 
 from selenium import webdriver
@@ -25,11 +26,12 @@ class _GetAnswers:
 
     @staticmethod
     def _setup_logging() -> None:
-        with open('../logFile/app.log', 'w'):
+        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "logFile", "app.log")
+        with open(log_path, 'w'):
             pass
 
         logging.basicConfig(
-            filename='../logFile/app.log',
+            filename=log_path,
             encoding='utf-8',
             level=logging.INFO,
             format='%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s',

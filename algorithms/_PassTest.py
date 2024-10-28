@@ -1,4 +1,5 @@
 import logging
+import os
 import random
 import sqlite3 as sq
 import time
@@ -27,8 +28,9 @@ class _PassTest:
 
     @staticmethod
     def _setup_logging() -> None:
+        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "logFile", "app.log")
         logging.basicConfig(
-            filename='../logFile/app.log',
+            filename=log_path,
             encoding='utf-8',
             level=logging.INFO,
             format='%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s',
@@ -118,7 +120,7 @@ class _PassTest:
                     question = question_text
 
                 logging.info('Запрос к базе данных')
-                answer_db = self._database.get_answer(question)
+                answer_db = self._database.get_answer(str(question))
                 logging.info(f'Ответ от бд получен -> {answer_db}')
                 logging.info('Начало ожидания массива ответов, доступных на странице')
                 choices = self._wait_short.until(

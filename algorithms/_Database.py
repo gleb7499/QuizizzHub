@@ -1,5 +1,6 @@
 import logging
 import sqlite3 as sq
+import os
 
 
 class _Database:
@@ -13,7 +14,8 @@ class _Database:
 
     def __init__(self, CLEAR_IT: bool = False):
         try:
-            self._connector = sq.connect("../Data/Questions.db")
+            db_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "Data", "Questions.db")
+            self._connector = sq.connect(db_path)
             self._cursor = self._connector.cursor()
             if CLEAR_IT:
                 self._cursor.execute("DROP TABLE IF EXISTS Questions")
@@ -63,8 +65,9 @@ class _Database:
 
     @staticmethod
     def _setup_logging() -> None:
+        log_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", "logFile", "app.log")
         logging.basicConfig(
-            filename='../logFile/app.log',
+            filename=log_path,
             encoding='utf-8',
             level=logging.INFO,
             format='%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s',
