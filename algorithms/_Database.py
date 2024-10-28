@@ -21,6 +21,20 @@ class Database:
                         Answer TEXT
                         )""")
 
+    def find_question(self, question: str, answers: str) -> tuple:
+        self._cursor.execute("SELECT * FROM Questions WHERE Question = ? AND Answer = ?", (question, answers))
+        return self._cursor.fetchone()
+
+    def add_question(self, question: str, answers: str) -> None:
+        if self.find_question(question, answers):
+            return
+        self._cursor.execute("INSERT INTO Questions (Question, Answer) VALUES (?, ?)", (question, answers))
+        self._connector.commit()
+
+    def get_answer(self, question: str) -> str:
+        self._cursor.execute("SELECT Answer FROM Questions WHERE Question = ?", (question,))
+        return self._cursor.fetchone()[0]
+
     def __del__(self):
         if self._connector:
             self._connector.close()
