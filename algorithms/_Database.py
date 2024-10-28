@@ -1,3 +1,4 @@
+import logging
 import sqlite3 as sq
 
 
@@ -21,36 +22,51 @@ class _Database:
                             Question TEXT,
                             Answer TEXT
                             )""")
-        except sq.Error:
+            self._setup_logging()
+        except sq.Error as e:
             if self._connector:
                 self._connector.rollback()
+            logging.error(f"Ошибка при инициализации базы данных - {e}")
 
     def find_question(self, question: str, answers: str) -> tuple:
         try:
             self._cursor.execute("SELECT * FROM Questions WHERE Question = ? AND Answer = ?", (question, answers))
             return self._cursor.fetchone()
-        except sq.Error:
+        except sq.Error as e:
             if self._connector:
                 self._connector.rollback()
+            logging.error(f"Ошибка при поиске вопроса - {e}")
 
     def add_question(self, question: str, answers: str) -> None:
-        if self.find_question(question, answers):
+        if self.find_question(question, answers) is not None:
             return
         try:
             self._cursor.execute("INSERT INTO Questions (Question, Answer) VALUES (?, ?)", (question, answers))
             self._connector.commit()
-        except sq.Error:
+        except sq.Error as e:
             if self._connector:
                 self._connector.rollback()
+            logging.error(f"Ошибка при добавлении вопроса - {e}")
 
     def get_answer(self, question: str) -> str:
         try:
             self._cursor.execute("SELECT Answer FROM Questions WHERE Question = ?", (question,))
             return self._cursor.fetchone()[0]
-        except sq.Error:
+        except sq.Error as e:
             if self._connector:
                 self._connector.rollback()
+            logging.error(f"Ошибка при получении ответа - {e}")
 
     def __del__(self):
         if self._connector:
             self._connector.close()
+
+    @staticmethod
+    def _setup_logging() -> None:
+        logging.basicConfig(
+            filename='../logFile/app.log',
+            encoding='utf-8',
+            level=logging.INFO,
+            format='%(asctime)s.%(msecs)03d - %(levelname)s - %(message)s',
+            datefmt='%M:%S'
+        )
