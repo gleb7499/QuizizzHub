@@ -10,27 +10,18 @@ from selenium.webdriver.support.ui import WebDriverWait
 
 
 class _GetAnswers:
-    def __init__(self):
+    def __init__(self, database):
         # Инициализация драйвера
         self._browser = None
         self._wait_long = None
         self._wait_short = None
         self._wait_quite_short = None
         # Инициализация БД
-        self._connector = sq.connect("../Data/Questions.db")
-        self._cursor = self._connector.cursor()
-        self._cursor.execute("DROP TABLE IF EXISTS Questions")
-        self._cursor.execute("""CREATE TABLE IF NOT EXISTS Questions (
-                        QuestionID INTEGER PRIMARY KEY AUTOINCREMENT,
-                        Question TEXT,
-                        Answer TEXT
-                        )""")
+        self._database = database
 
     def __del__(self):
         if self._browser:
             self._browser.quit()
-        if self._connector:
-            self._connector.close()
 
     @staticmethod
     def _setup_logging() -> None:
@@ -56,126 +47,114 @@ class _GetAnswers:
 
         _GetAnswers._setup_logging()
 
-        try:
-            # Ввести код и нажать Join
-            input_and_button = self._wait_long.until(
-                EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR, '[id="proceed-game-action-wrapper"]'))
-            )
-            input_code = input_and_button.find_element(By.CSS_SELECTOR, 'input')
-            input_code.send_keys(CODE)
-            input_and_button.find_element(By.CSS_SELECTOR, 'button').click()
-            logging.info('input_and_button завершено')
+        # Ввести код и нажать Join
+        input_and_button = self._wait_long.until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, '[id="proceed-game-action-wrapper"]'))
+        )
+        input_code = input_and_button.find_element(By.CSS_SELECTOR, 'input')
+        input_code.send_keys(CODE)
+        input_and_button.find_element(By.CSS_SELECTOR, 'button').click()
+        logging.info('input_and_button завершено')
 
-            # Кнопка генерации имени
-            generate_name_but = self._wait_long.until(
-                EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR, '[class="player-name-generator-icon hover:cursor-pointer"]'))
-            )
-            generate_name_but.click()
-            logging.info('Кнопка генерации имени нажата')
+        # Кнопка генерации имени
+        generate_name_but = self._wait_long.until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, '[class="player-name-generator-icon hover:cursor-pointer"]'))
+        )
+        generate_name_but.click()
+        logging.info('Кнопка генерации имени нажата')
 
-            # Кнопка начала игры
-            start_game_but = self._wait_long.until(
-                EC.visibility_of_element_located(
-                    (By.CSS_SELECTOR, '[class="start-game hover:cursor-pointer primary-button"]'))
-            )
-            start_game_but.click()
-            logging.info('Кнопка начала игры нажата')
+        # Кнопка начала игры
+        start_game_but = self._wait_long.until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, '[class="start-game hover:cursor-pointer primary-button"]'))
+        )
+        start_game_but.click()
+        logging.info('Кнопка начала игры нажата')
 
-            # Общее количество вопросов
-            total_question_number = int(self._wait_long.until(
-                EC.visibility_of_element_located((By.CSS_SELECTOR, '[role="total-question-number"]'))).text)
-            logging.info(f'Всего вопросов -> {total_question_number}')
+        # Общее количество вопросов
+        total_question_number = int(self._wait_long.until(
+            EC.visibility_of_element_located((By.CSS_SELECTOR, '[role="total-question-number"]'))).text)
+        logging.info(f'Всего вопросов -> {total_question_number}')
 
-            flag = True
-            i = 1
-            while i <= total_question_number:
-                logging.info(f'Начало цикла -> {i}')
-                while True:
+        flag = True
+        i = 1
+        while i <= total_question_number:
+            logging.info(f'Начало цикла -> {i}')
+            while True:
+                try:
+                    logging.info("\t\tПоиск текущего вопроса")
+                    self._wait_quite_short.until(
+                        EC.text_to_be_present_in_element((By.CSS_SELECTOR, '[role="current-question-number"]'),
+                                                         str(i)))
+                    logging.info("\t\t***Обнаружен новый вопрос***")
+                    question = self._new_question()
+                    break
+                except TimeoutException:
                     try:
-                        logging.info("\t\tПоиск текущего вопроса")
-                        self._wait_quite_short.until(
-                            EC.text_to_be_present_in_element((By.CSS_SELECTOR, '[role="current-question-number"]'),
-                                                             str(i)))
-                        logging.info("\t\t***Обнаружен новый вопрос***")
-                        question = self._new_question()
+                        self._wait_quite_short.until(EC.visibility_of_element_located(
+                            (By.CSS_SELECTOR, "button.selector.strip-default-btn-style.selector-item")))
+                        logging.info("\t\t\tОбнаружен повторный вопрос")
+                        self._repeat_question()
+                        flag = False
                         break
                     except TimeoutException:
-                        try:
-                            self._wait_quite_short.until(EC.visibility_of_element_located(
-                                (By.CSS_SELECTOR, "button.selector.strip-default-btn-style.selector-item")))
-                            logging.info("\t\t\tОбнаружен повторный вопрос")
-                            self._repeat_question()
-                            flag = False
-                            break
-                        except TimeoutException:
-                            # Не нашелся ни один из элементов -> обоих элементов не было на странице, попробуем что-нибудь найти еще раз
-                            pass
-                # Первая кнопка с ответом
-                logging.info('Начало ожидания первой кнопки с ответом')
-                ans_butt = self._wait_short.until(
-                    EC.visibility_of_element_located((By.CSS_SELECTOR, "div.bpl-container.th-black.option-inner"))
+                        # Не нашелся ни один из элементов -> обоих элементов не было на странице, попробуем что-нибудь найти еще раз
+                        pass
+            # Первая кнопка с ответом
+            logging.info('Начало ожидания первой кнопки с ответом')
+            ans_butt = self._wait_short.until(
+                EC.visibility_of_element_located((By.CSS_SELECTOR, "div.bpl-container.th-black.option-inner"))
+            )
+            logging.info('Первая кнопка с ответом обнаружена')
+            self._browser.execute_script("arguments[0].click();", ans_butt)
+            logging.info('Первая кнопка с ответом нажата')
+            # Поиск кнопки при выборе нескольких вариантов ответа
+            try:
+                ok_button = self._browser.find_element(By.CSS_SELECTOR,
+                                                       '[class="show-tooltip cursor-pointer default"]')
+                logging.info('Кнопка при выборе нескольких вариантов ответа обнаружена')
+                ok_button.find_element(By.CSS_SELECTOR, 'button').click()
+                logging.info('Кнопка при выборе нескольких вариантов ответа нажата')
+            except NoSuchElementException:
+                logging.info('Только один вариант ответа')
+                pass
+            if flag:
+                logging.info('Начало ожидания объектов с ответами')
+                answers_obj = self._wait_short.until(
+                    EC.visibility_of_all_elements_located((By.CSS_SELECTOR, '.is-correct'))
                 )
-                logging.info('Первая кнопка с ответом обнаружена')
-                self._browser.execute_script("arguments[0].click();", ans_butt)
-                logging.info('Первая кнопка с ответом нажата')
-                # Поиск кнопки при выборе нескольких вариантов ответа
-                try:
-                    ok_button = self._browser.find_element(By.CSS_SELECTOR,
-                                                           '[class="show-tooltip cursor-pointer default"]')
-                    logging.info('Кнопка при выборе нескольких вариантов ответа обнаружена')
-                    ok_button.find_element(By.CSS_SELECTOR, 'button').click()
-                    logging.info('Кнопка при выборе нескольких вариантов ответа нажата')
-                except NoSuchElementException:
-                    logging.info('Только один вариант ответа')
-                    pass
-                if flag:
-                    logging.info('Начало ожидания объектов с ответами')
-                    answers_obj = self._wait_short.until(
-                        EC.visibility_of_all_elements_located((By.CSS_SELECTOR, '.is-correct'))
-                    )
-                    logging.info('Объекты с ответами обнаружены')
-                    answers = []
-                    for ans in answers_obj:
-                        # Поиск ответа
-                        try:
-                            text_choice = ans.find_element(By.CSS_SELECTOR, '.resizeable.gap-x-2').text
-                        except NoSuchElementException:
-                            text_choice = ''
-                        # Изображения в ответах
-                        try:
-                            image_answer = ans.find_element(By.CSS_SELECTOR,
-                                                            '.option-image.object-contain').get_attribute('style')
-                            logging.info('Изображение в ответе обнаружено')
-                            answer = [text_choice, image_answer]
-                        except NoSuchElementException:
-                            logging.info('Изображений в ответе нет')
-                            answer = [text_choice]
-                        answers.append(str(answer))
-                    answers = list(dict.fromkeys(answers))
-                    answers = str(answers).replace("\\'", "'")
-                    question = str(question)
-                    logging.info(f'Вопрос -> {question}, Ответ -> {answers}')
-                    # Поиск повторений в базе данных
-                    self._cursor.execute("SELECT Question, Answer FROM Questions WHERE Question = ? AND Answer = ?",
-                                         (question, answers))
+                logging.info('Объекты с ответами обнаружены')
+                answers = []
+                for ans in answers_obj:
+                    # Поиск ответа
                     try:
-                        self._cursor.fetchone()[0]
-                        logging.info('Обнаружена повторка')
-                    except TypeError:
-                        self._cursor.execute("INSERT INTO Questions VALUES(NULL, ?, ?)", (question, answers))
-                        self._connector.commit()
-                        logging.info('Вопрос и ответ внесены в БД')
-                    i = i + 1
-                flag = True
+                        text_choice = ans.find_element(By.CSS_SELECTOR, '.resizeable.gap-x-2').text
+                    except NoSuchElementException:
+                        text_choice = ''
+                    # Изображения в ответах
+                    try:
+                        image_answer = ans.find_element(By.CSS_SELECTOR,
+                                                        '.option-image.object-contain').get_attribute('style')
+                        logging.info('Изображение в ответе обнаружено')
+                        answer = [text_choice, image_answer]
+                    except NoSuchElementException:
+                        logging.info('Изображений в ответе нет')
+                        answer = [text_choice]
+                    answers.append(str(answer))
+                answers = list(dict.fromkeys(answers))
+                answers = str(answers).replace("\\'", "'")
+                question = str(question)
+                logging.info(f'Вопрос -> {question}, Ответ -> {answers}')
+                # Поиск повторений в базе данных
+                self._database.add_question(question=question, answers=answers)
+                logging.info('Вопрос и ответ внесены в БД')
+                i = i + 1
+            flag = True
 
-            logging.info('Тест закончен')
-            self._browser.quit()
-
-        except sq.Error:
-            if self._connector:
-                self._connector.rollback()
+        logging.info('Тест закончен')
+        self._browser.quit()
 
     def _new_question(self) -> None:
         # Ожидание появление вопроса

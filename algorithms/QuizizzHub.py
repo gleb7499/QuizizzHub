@@ -1,5 +1,6 @@
 from algorithms._PassTest import _PassTest
 from algorithms._GetAnswers import _GetAnswers
+from algorithms._Database import _Database
 
 
 class QuizizzHub:
@@ -9,8 +10,9 @@ class QuizizzHub:
     SPEED_SLOW = 3
 
     def __init__(self):
-        self._get_answers = _GetAnswers()
-        self._pass_test = _PassTest()
+        database = _Database()
+        self._get_answers = _GetAnswers(database=database)
+        self._pass_test = _PassTest(database=database)
 
     def get_answers(self, CODE: str = None) -> None:
         self._get_answers.get_answers(CODE=CODE)
