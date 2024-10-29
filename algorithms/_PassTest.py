@@ -80,6 +80,10 @@ class _PassTest:
         total_question_number = int(self._wait_long.until(
             EC.visibility_of_element_located((By.CSS_SELECTOR, '[role="total-question-number"]'))).text)
 
+        # Оповестить пользователя о некорректности ввода числа необходимых ошибок в ответах
+        if total_question_number < wrong or wrong < 0:
+            raise ValueError(f'Вопросов всего -> {total_question_number}, но вам нужно ответить неверно на -> {wrong}?')
+
         i = 1
         while i <= total_question_number:
             logging.info(f'Итерация -> {i}')
@@ -123,23 +127,29 @@ class _PassTest:
                         (By.CSS_SELECTOR, '[class="bpl-content-container w-full"]'))
                 )
                 logging.info('Объекты вариантов ответов получены')
-                for choice in choices:
-                    # Поиск ответа
-                    try:
-                        text_choice = choice.find_element(By.CSS_SELECTOR, '.resizeable.gap-x-2').text
-                    except NoSuchElementException:
-                        text_choice = ''
-                    try:
-                        image_answer = choice.find_element(By.CSS_SELECTOR,
-                                                           '.option-image.object-contain').get_attribute('style')
-                        answer = [text_choice, image_answer]
-                    except NoSuchElementException:
-                        answer = [text_choice]
-                    answer = str(answer)
-                    logging.info(f'Текущий кандидат на ответ со страницы -> {answer}')
-                    if answer in answer_db:
-                        logging.info(f'Выбран ответ {answer}')
-                        self._browser.execute_script("arguments[0].click();", choice)
+                # Выбор неверного варианта ответа
+                if wrong != 0:
+                    self._browser.execute_script("arguments[0].click();", choices[0])
+                    wrong -= 1
+                else:
+                    for choice in choices:
+                        # Поиск ответа
+                        try:
+                            text_choice = choice.find_element(By.CSS_SELECTOR, '.resizeable.gap-x-2').text
+                        except NoSuchElementException:
+                            text_choice = ''
+                        try:
+                            image_answer = choice.find_element(By.CSS_SELECTOR,
+                                                               '.option-image.object-contain').get_attribute('style')
+                            answer = [text_choice, image_answer]
+                        except NoSuchElementException:
+                            answer = [text_choice]
+                        # Выбор ответа
+                        answer = str(answer)
+                        logging.info(f'Текущий кандидат на ответ со страницы -> {answer}')
+                        if answer in answer_db:
+                            logging.info(f'Выбран ответ {answer}')
+                            self._browser.execute_script("arguments[0].click();", choice)
                 # Есть ли кнопка для нескольких вариантов ответа
                 try:
                     ok_button = self._browser.find_element(By.CSS_SELECTOR,
