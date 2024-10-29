@@ -105,7 +105,8 @@ class _PassTest:
                             logging.info("\t\t\tОбнаружен повторный вопрос")
                             self._repeat_question()
                             flag = False
-                            i = i - 1
+                            if i != total_question_number:
+                                i = i - 1
                             break
                         except TimeoutException:
                             # Не нашелся ни один из элементов -> обоих элементов не было на странице, попробуем что-нибудь найти еще раз
@@ -155,12 +156,14 @@ class _PassTest:
                     logging.info(f'Текущий кандидат на ответ со страницы -> {answer}')
                     # Выбор неверного ответа в повторном вопросе
                     if not flag and answer not in answer_db:
+                        logging.info(f'Выбран ответ {answer}')
                         self._browser.execute_script("arguments[0].click();", choice)
                         flag = True
                         break
                     # Выбор неверного варианта ответа при необходимости
                     if wrong != 0:
                         if answer not in answer_db:
+                            logging.info(f'Выбран ответ {answer}')
                             self._browser.execute_script("arguments[0].click();", choice)
                             wrong = wrong - 1
                             break
