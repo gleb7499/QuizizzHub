@@ -38,7 +38,7 @@ class _PassTest:
         )
         logging.info('\n\t\t\t***Начала логирования PassTest***\n')
 
-    def pass_test(self, ratio: int, CODE: int, EMAIL: str = None, PASSWORD: str = None) -> None:
+    def pass_test(self, wrong: int, CODE: int, EMAIL: str = None, PASSWORD: str = None) -> None:
         # Инициализация драйвера
         self._browser = webdriver.Chrome()
         self._browser.get('https://quizizz.com/join')
@@ -47,11 +47,6 @@ class _PassTest:
         self._wait_quite_short = WebDriverWait(self._browser, 0.1)
 
         _PassTest._setup_logging()
-
-        if ratio not in (0, 1, 2, 3):
-            raise ValueError("Invalid speed parameter")
-        MIN = float(2 * ratio)
-        MAX = float(2.5 * ratio)
 
         # Вход в аккаунт, если это нужно
         if EMAIL is not None and PASSWORD is not None:
@@ -128,7 +123,6 @@ class _PassTest:
                         (By.CSS_SELECTOR, '[class="bpl-content-container w-full"]'))
                 )
                 logging.info('Объекты вариантов ответов получены')
-                correct_answer = list()
                 for choice in choices:
                     # Поиск ответа
                     try:
@@ -145,23 +139,16 @@ class _PassTest:
                     logging.info(f'Текущий кандидат на ответ со страницы -> {answer}')
                     if answer in answer_db:
                         logging.info(f'Выбран ответ {answer}')
-                        correct_answer.append(choice)
-
-                # Корректировка в соответствии с желаемым ожиданием перед выбором правильного ответа
+                        self._browser.execute_script("arguments[0].click();", choice)
+                # Есть ли кнопка для нескольких вариантов ответа
                 try:
                     ok_button = self._browser.find_element(By.CSS_SELECTOR,
                                                            '[class="show-tooltip cursor-pointer default"]')
-                    ok_button = ok_button.find_element(By.CSS_SELECTOR, 'button')
-                    for choice in correct_answer:
-                        self._browser.execute_script("arguments[0].click();", choice)
-                    time.sleep(random.uniform(MIN, MAX))
-                    ok_button.click()
+                    ok_button.find_element(By.CSS_SELECTOR, 'button').click()
                 except NoSuchElementException:
-                    time.sleep(random.uniform(MIN, MAX))
-                    self._browser.execute_script("arguments[0].click();", correct_answer[0])
-
-            except TimeoutException:
-                break
+                    pass
+            except TimeoutException as e:
+                logging.info(e)
             i = i + 1
 
         # Периодически проверять открыт ли браузер во время спячки кода

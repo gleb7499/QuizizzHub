@@ -15,4 +15,4 @@ if __name__ == '__main__':
 
     quizizz.get_answers(CODE=CODE)
 
-    quizizz.pass_test(ratio=QuizizzHub.SPEED_MEDIUM, CODE=CODE)
+    quizizz.pass_test(wrong=QuizizzHub.SPEED_MEDIUM, CODE=CODE)
