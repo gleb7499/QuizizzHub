@@ -4,8 +4,8 @@ from algorithms._Database import _Database
 
 
 class QuizizzHub:
-    def __init__(self):
-        database = _Database()
+    def __init__(self, CLEAR_DB: bool = False):
+        database = _Database(CLEAR_DB)
         self._get_answers = _GetAnswers(database=database)
         self._pass_test = _PassTest(database=database)
 

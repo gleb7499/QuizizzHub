@@ -7,7 +7,7 @@ class _Database:
     _instance: '_Database' = None
     CLEAR: bool = True
 
-    def __new__(cls):
+    def __new__(cls, CLEAR_IT: bool = False):
         if cls._instance is None:
             cls._instance = super(_Database, cls).__new__(cls)
         return cls._instance

@@ -84,7 +84,9 @@ class _PassTest:
         if total_question_number < wrong or wrong < 0:
             raise ValueError(f'Вопросов всего -> {total_question_number}, но вам нужно ответить неверно на -> {wrong}?')
 
+        flag = True
         i = 1
+        total_question_number = total_question_number + 1 if wrong != 0 else total_question_number
         while i <= total_question_number:
             logging.info(f'Итерация -> {i}')
             try:
@@ -97,8 +99,17 @@ class _PassTest:
                         logging.info('***Номер вопроса найден***')
                         break
                     except TimeoutException:
-                        logging.info('Продолжается поиск номера вопроса...')
-                        pass
+                        try:
+                            self._wait_quite_short.until(EC.visibility_of_element_located(
+                                (By.CSS_SELECTOR, "button.selector.strip-default-btn-style.selector-item")))
+                            logging.info("\t\t\tОбнаружен повторный вопрос")
+                            self._repeat_question()
+                            flag = False
+                            i = i - 1
+                            break
+                        except TimeoutException:
+                            # Не нашелся ни один из элементов -> обоих элементов не было на странице, попробуем что-нибудь найти еще раз
+                            continue
 
                 logging.info('Ожидание объекта с вопросом')
                 question_obj = self._wait_short.until(
@@ -127,29 +138,35 @@ class _PassTest:
                         (By.CSS_SELECTOR, '[class="bpl-content-container w-full"]'))
                 )
                 logging.info('Объекты вариантов ответов получены')
-                # Выбор неверного варианта ответа
-                if wrong != 0:
-                    self._browser.execute_script("arguments[0].click();", choices[0])
-                    wrong -= 1
-                else:
-                    for choice in choices:
-                        # Поиск ответа
-                        try:
-                            text_choice = choice.find_element(By.CSS_SELECTOR, '.resizeable.gap-x-2').text
-                        except NoSuchElementException:
-                            text_choice = ''
-                        try:
-                            image_answer = choice.find_element(By.CSS_SELECTOR,
-                                                               '.option-image.object-contain').get_attribute('style')
-                            answer = [text_choice, image_answer]
-                        except NoSuchElementException:
-                            answer = [text_choice]
-                        # Выбор ответа
-                        answer = str(answer)
-                        logging.info(f'Текущий кандидат на ответ со страницы -> {answer}')
-                        if answer in answer_db:
-                            logging.info(f'Выбран ответ {answer}')
+                for choice in choices:
+                    # Поиск ответа
+                    try:
+                        text_choice = choice.find_element(By.CSS_SELECTOR, '.resizeable.gap-x-2').text
+                    except NoSuchElementException:
+                        text_choice = ''
+                    try:
+                        image_answer = choice.find_element(By.CSS_SELECTOR,
+                                                           '.option-image.object-contain').get_attribute('style')
+                        answer = [text_choice, image_answer]
+                    except NoSuchElementException:
+                        answer = [text_choice]
+                    # Выбор ответа
+                    answer = str(answer)
+                    logging.info(f'Текущий кандидат на ответ со страницы -> {answer}')
+                    # Выбор неверного ответа в повторном вопросе
+                    if not flag and answer not in answer_db:
+                        self._browser.execute_script("arguments[0].click();", choice)
+                        flag = True
+                        break
+                    # Выбор неверного варианта ответа при необходимости
+                    if wrong != 0:
+                        if answer not in answer_db:
                             self._browser.execute_script("arguments[0].click();", choice)
+                            wrong = wrong - 1
+                            break
+                    elif answer in answer_db:
+                        logging.info(f'Выбран ответ {answer}')
+                        self._browser.execute_script("arguments[0].click();", choice)
                 # Есть ли кнопка для нескольких вариантов ответа
                 try:
                     ok_button = self._browser.find_element(By.CSS_SELECTOR,
@@ -160,6 +177,8 @@ class _PassTest:
             except TimeoutException as e:
                 logging.info(e)
             i = i + 1
+
+        logging.info('Тест закончен')
 
         # Периодически проверять открыт ли браузер во время спячки кода
         check_interval = 3
@@ -203,3 +222,15 @@ class _PassTest:
                                             '[class="transition-colors duration-200 ease-in-out flex flex items-center justify-center px-4 py-1 text-sm font-semibold h-8 base bg-lilac text-light-3 hover:bg-lilac-light active:bg-lilac-dark rounded primary relative min-w-max w-full w-full"]'))
         )
         self._browser.execute_script("arguments[0].click();", log_in)
+
+    def _repeat_question(self) -> None:
+        logging.info('Обнаружена страница с повторным вопросом')
+        # Значит это страница с повторным вопросом
+        logging.info('Начало ожидания кнопки выбора номера повторения вопроса')
+        repeat_question_button = self._wait_short.until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, 'button.selector.strip-default-btn-style.selector-item'))
+        )
+        logging.info('Кнопка выбора номера повторения вопроса обнаружена')
+        self._browser.execute_script("arguments[0].click();", repeat_question_button)
+        logging.info('Кнопка выбора номера повторения вопроса нажата')
