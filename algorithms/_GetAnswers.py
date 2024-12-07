@@ -146,7 +146,9 @@ class _GetAnswers:
                         answer = [text_choice]
                     answers.append(str(answer))
                 answers = list(dict.fromkeys(answers))
-                answers = str(answers).replace("\\'", "'")
+                answers = str(answers)
+                answers = answers.replace("\\'", "'")
+                answers = answers.replace("\\\\n", "\\n")
                 question = str(question)
                 logging.info(f'Вопрос -> {question}, Ответ -> {answers}')
                 # Поиск повторений в базе данных
