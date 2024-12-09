@@ -30,9 +30,9 @@ class _Database:
                 self._connector.rollback()
             logging.error(f"Ошибка при инициализации базы данных - {e}")
 
-    def find_question(self, question: str, answers: str) -> tuple:
+    def find_question(self, question: str) -> tuple:
         try:
-            self._cursor.execute("SELECT * FROM Questions WHERE Question = ? AND Answer = ?", (question, answers))
+            self._cursor.execute("SELECT * FROM Questions WHERE Question = ?", (question, ))
             return self._cursor.fetchone()
         except sq.Error as e:
             if self._connector:
@@ -40,7 +40,7 @@ class _Database:
             logging.error(f"Ошибка при поиске вопроса - {e}")
 
     def add_question(self, question: str, answers: str) -> None:
-        if self.find_question(question, answers) is not None:
+        if self.find_question(question) is not None:
             return
         try:
             self._cursor.execute("INSERT INTO Questions (Question, Answer) VALUES (?, ?)", (question, answers))
