@@ -67,10 +67,18 @@ class _GetAnswers:
         generate_name_but.click()
         logging.info('Кнопка генерации имени нажата')
 
+        # Кнопка присоединения к игре
+        join_button = self._wait_long.until(
+            EC.visibility_of_element_located(
+                (By.CSS_SELECTOR, '[class="start-game hover:cursor-pointer primary-button"]'))
+        )
+        join_button.click()
+        logging.info('Кнопка присоединения к игре нажата')
+
         # Кнопка начала игры
         start_game_but = self._wait_long.until(
             EC.visibility_of_element_located(
-                (By.CSS_SELECTOR, '[class="start-game hover:cursor-pointer primary-button"]'))
+                (By.CSS_SELECTOR, 'div.flex.flex-col.all-center button'))
         )
         start_game_but.click()
         logging.info('Кнопка начала игры нажата')
