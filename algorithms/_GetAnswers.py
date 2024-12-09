@@ -134,7 +134,7 @@ class _GetAnswers:
                     try:
                         text_choice = ans.find_element(By.CSS_SELECTOR, '.resizeable.gap-x-2').text
                     except NoSuchElementException:
-                        text_choice = ''
+                        text_choice = ""
                     # Изображения в ответах
                     try:
                         image_answer = ans.find_element(By.CSS_SELECTOR,
@@ -148,7 +148,7 @@ class _GetAnswers:
                 answers = list(dict.fromkeys(answers))
                 answers = str(answers)
                 answers = answers.replace("\\'", "'")
-                answers = answers.replace("\\\\n", "\\n")
+                answers = answers.replace("\\\\", "\\")
                 question = str(question)
                 logging.info(f'Вопрос -> {question}, Ответ -> {answers}')
                 # Поиск повторений в базе данных
