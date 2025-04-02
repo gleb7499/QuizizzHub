@@ -1,6 +1,6 @@
-from algorithms._PassTest import _PassTest
-from algorithms._GetAnswers import _GetAnswers
 from algorithms._Database import _Database
+from algorithms._GetAnswers import _GetAnswers
+from algorithms._PassTest import _PassTest
 
 
 class QuizizzHub:

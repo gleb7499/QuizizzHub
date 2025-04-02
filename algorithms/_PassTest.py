@@ -1,7 +1,5 @@
 import logging
 import os
-import random
-import sqlite3 as sq
 import time
 
 from selenium import webdriver

@@ -1,6 +1,6 @@
 import logging
-import sqlite3 as sq
 import os
+import sqlite3 as sq
 
 
 class _Database:
@@ -32,7 +32,7 @@ class _Database:
 
     def find_question(self, question: str) -> tuple:
         try:
-            self._cursor.execute("SELECT * FROM Questions WHERE Question = ?", (question, ))
+            self._cursor.execute("SELECT * FROM Questions WHERE Question = ?", (question,))
             return self._cursor.fetchone()
         except sq.Error as e:
             if self._connector:

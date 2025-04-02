@@ -1,6 +1,5 @@
 import logging
 import os
-import sqlite3 as sq
 
 from selenium import webdriver
 from selenium.common.exceptions import NoSuchElementException
@@ -75,13 +74,13 @@ class _GetAnswers:
         join_button.click()
         logging.info('Кнопка присоединения к игре нажата')
 
-        # Кнопка начала игры
-        start_game_but = self._wait_long.until(
-            EC.visibility_of_element_located(
-                (By.CSS_SELECTOR, 'div.flex.flex-col.all-center button'))
-        )
-        start_game_but.click()
-        logging.info('Кнопка начала игры нажата')
+        # # Кнопка начала игры
+        # start_game_but = self._wait_long.until(
+        #     EC.visibility_of_element_located(
+        #         (By.CSS_SELECTOR, 'div.flex.flex-col.all-center button'))
+        # )
+        # start_game_but.click()
+        # logging.info('Кнопка начала игры нажата')
 
         # Общее количество вопросов
         total_question_number = int(self._wait_long.until(
