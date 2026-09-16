@@ -1,81 +1,87 @@
 # QuizizzHub
 
-QuizizzHub – это Python-приложение для автоматического прохождения тестов на [Quizizz](https://quizizz.com), которое собирает вопросы и ответы, а затем проходит тест, выбирая правильные варианты для получения корректных результатов.
+QuizizzHub is a Python application for automating Quizizz test sessions. It collects questions and answers, then completes a test by selecting the corresponding answers.
 
-## Обзор
+## Overview
 
-Проект состоит из набора модулей, которые:
+The project consists of modules that:
 
-- Собирают вопросы и ответы с веб-страницы Quizizz.
-- Хранят данные в локальной базе данных.
-- Проходят тест, автоматически выбирая варианты ответа.
-- Логгируют работу приложения для последующего анализа.
+- collect questions and answers from Quizizz web pages;
+- store collected data in a local database;
+- join and complete a test by selecting answers automatically;
+- log application activity for later analysis and troubleshooting.
 
-## Функциональность
+## Features
 
-- **Сбор вопросов и ответов**\
-  Метод `get_answers(CODE)` собирает вопросы и корректные ответы с Quizizz, используя уникальный код теста (выдается преподавателем), и сохраняет их в локальную базу данных (SQLite).
+- **Question and answer collection**
+  `get_answers(CODE)` collects questions and correct answers from Quizizz using the unique quiz code provided by the instructor, then stores them in a local SQLite database.
 
-- **Автоматическое прохождение теста**\
-  Метод `pass_test(wrong, CODE, EMAIL, PASSWORD)` автоматически присоединяется к тесту, выбирает ответы (с учетом возможности совершить заданное количество ошибок) и завершает тест после получения всех вопросов. При необходимости выполняется вход в аккаунт через предоставленные EMAIL и PASSWORD.
+- **Automated test completion**
+  `pass_test(wrong, CODE, EMAIL, PASSWORD)` joins a quiz, selects answers, optionally allows a specified number of incorrect answers, and completes the session after processing all questions. If necessary, it signs in using the supplied email and password.
 
-- **Логирование**\
-  Вся работа приложения логируется в файле, что помогает отслеживать процесс выполнения и отладку.
+- **Logging**
+  Application activity is written to a log file to make execution easier to monitor and debug.
 
-## Установка и запуск
+## Installation and usage
 
-### 1. Настройка среды
+### 1. Set up the environment
 
-- Убедитесь, что установлен Python (рекомендуется Python 3.12) и Chrome.
-- Установите необходимые библиотеки:
+- Install Python (Python 3.12 is recommended) and Google Chrome.
+- Install the required dependencies:
+
   ```bash
   pip install -r requirements.txt
   ```
-- Если возникли проблемы с библиотеками, рекомендуется выполнить:
+
+- If dependency issues occur, try the extended requirements file:
+
   ```bash
   pip install -r requirements_full.txt
   ```
 
-### 2. Запуск программы
+### 2. Run the application
 
-- Запустите файл `main.py`.
-- Пример вызова:
-  ```python
-  from algorithms.QuizizzHub import QuizizzHub
+Run `main.py` or use the class from your Python code:
 
-  if __name__ == "__main__":
-      CODE = "010649"  # Уникальный код теста, который выдает преподаватель
-      EMAIL = "your_email@example.com"  # (необязательно) для входа в аккаунт Quizizz
-      PASSWORD = "your_password"  # (необязательно)
+```python
+from algorithms.QuizizzHub import QuizizzHub
 
-      quizizz = QuizizzHub()
-      quizizz.get_answers(CODE=CODE)
-      quizizz.pass_test(wrong=0, CODE=CODE, EMAIL=EMAIL, PASSWORD=PASSWORD)
-  ```
+if __name__ == "__main__":
+    CODE = "010649"  # Unique quiz code provided by the instructor
+    EMAIL = "your_email@example.com"  # Optional Quizizz account email
+    PASSWORD = "your_password"  # Optional Quizizz account password
 
-### 3. Наблюдение за процессом
+    quizizz = QuizizzHub()
+    quizizz.get_answers(CODE=CODE)
+    quizizz.pass_test(wrong=0, CODE=CODE, EMAIL=EMAIL, PASSWORD=PASSWORD)
+```
 
-При запуске откроется браузер Chrome, и программа самостоятельно выполнит последовательность действий: введет код, присоединится к тесту, дождется начала теста, выберет ответы, считает правильный ответ и внесет его в базу данных.
+### 3. Monitor the process
 
-## Требования
+When the application starts, a Chrome browser window opens. The program enters the quiz code, joins the session, waits for the test to begin, selects answers, records the results, and stores the collected information in the local database.
+
+## Requirements
 
 - **Python 3.12**
-- **Google Chrome** (для автоматизации с Selenium)
-- Библиотеки:
+- **Google Chrome** for Selenium-based browser automation
+- Libraries listed in `requirements.txt`, including:
   - `selenium`
-  - `sqlite3` (встроенная в Python)
-  - `logging`
-  - И другие зависимости, указанные в `requirements.txt`
+  - `sqlite3` (included with Python)
+  - `logging` (included with Python)
+  - other project dependencies
 
-## Примечания
+## Notes and limitations
 
-- Проект автоматически обрабатывает повторные вопросы, варианты с несколькими ответами и ручной ввод, но элементы геймификации Quizizz (например, бонусы) не поддерживаются – при их появлении необходимо вручную выбрать вариант.
-- Если тест не продолжается, проверьте, не завис ли браузер, и при необходимости вмешайтесь.
+- The application handles repeated questions, multiple-answer options, and manual input scenarios.
+- Quizizz gamification features, such as bonuses, are not supported. If one appears, select the required option manually.
+- If the test does not continue, check whether the browser is waiting for input and intervene manually when necessary.
 
-## Лицензия
+Use this tool only in accordance with the applicable Quizizz rules, course policies, and terms of service.
 
-Проект распространяется под лицензией **MIT**.
+## License
 
-## Автор
+This project is distributed under the **MIT License**. See [LICENSE.txt](LICENSE.txt) for the full license text.
 
-Разработано **Логиновым Глебом Олеговичем** – студентом IT-направления, который получил высший балл благодаря данной программе. <img src="https://raw.githubusercontent.com/Tarikul-Islam-Anik/Telegram-Animated-Emojis/main/Smileys/Face%20With%20Hand%20Over%20Mouth.webp" alt="Face With Hand Over Mouth" width="25" height="25" />
+## Author
+
+Developed by **Gleb Olegovich Loginov**, an IT student and the author of this project.
